@@ -1,0 +1,7 @@
+{% extends 'base.html' %}{% block title %}Ingresar · Fundo San Carlos{% endblock %}{% block public %}
+<main class="login-layout"><section class="login-story"><a class="brand" href="{% url 'login' %}"><span class="brand-icon">SC</span><span>Fundo San Carlos<small>CONTROL DE RECURSOS</small></span></a><div class="story-copy"><span class="eyebrow">TECNOLOGÍA AL SERVICIO DEL CAMPO</span><h1>El estado de tu fundo,<br>siempre a la vista.</h1><p>Agua y combustible en un solo lugar.<br>Información clara para decidir a tiempo.</p><div class="story-tanks"><div><span>AGUA</span><strong>30.000 <small>L</small></strong><div class="mini-level water"></div></div><div><span>PETRÓLEO</span><strong>1.000 <small>L</small></strong><div class="mini-level fuel"></div></div></div></div><p class="story-foot">La Unión · Región de Los Ríos</p></section>
+<section class="login-side"><div class="login-card"><h2>Bienvenido de nuevo</h2><p class="muted">Ingresa para consultar los recursos del fundo.</p><form method="post" class="stack">{% csrf_token %}{% if form.non_field_errors %}<div class="message error">Usuario o contraseña incorrectos. Revisa tus datos.</div>{% endif %}
+{% for field in form %}<div class="field"><label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{{ field.errors }}</div>{% endfor %}
+{% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}<button class="button primary full" type="submit">Ingresar al sistema <span aria-hidden="true">→</span></button></form>
+</div></section></main>
+{% endblock %}

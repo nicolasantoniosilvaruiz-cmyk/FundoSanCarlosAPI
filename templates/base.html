@@ -1,0 +1,15 @@
+{% load static %}<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#173d32"><title>{% block title %}Fundo San Carlos{% endblock %}</title>
+<link rel="stylesheet" href="{% static 'css/app.css' %}"><script src="{% static 'js/app.js' %}" defer></script></head>
+<body>{% if user.is_authenticated %}
+<aside class="sidebar"><a class="brand" href="{% url 'panel' %}"><span class="brand-icon">SC</span><span>Fundo San Carlos<small>CONTROL DE RECURSOS</small></span></a>
+<div class="nav-label">ESPACIO DE TRABAJO</div><nav aria-label="Navegación principal">
+<a href="{% url 'panel' %}" class="{% if seccion == 'panel' %}selected{% endif %}"><span aria-hidden="true">◫</span> Vista general</a>
+{% if user.es_administrador %}<a href="{% url 'alertas' %}" class="{% if seccion == 'alertas' %}selected{% endif %}"><span aria-hidden="true">♧</span> Alertas de agua</a>
+<a href="{% url 'simulador' %}" class="{% if seccion == 'simulador' %}selected{% endif %}"><span aria-hidden="true">↗</span> Registro de lecturas</a>{% endif %}</nav>
+<div class="sidebar-bottom">Fundo San Carlos<p>Gestión de agua y combustible</p></div></aside>
+<div class="workspace"><header class="topbar"><span class="breadcrumb">San Carlos <span>/</span> Monitoreo de estanques</span><div class="account"><span class="avatar">{{ user.first_name|first|default:user.username|first|upper }}</span><span>{{ user.first_name|default:user.username }}<small>{{ user.get_rol_display }}</small></span><form action="{% url 'logout' %}" method="post">{% csrf_token %}<button class="logout" type="submit">Salir</button></form></div></header>
+<main id="contenido">{% if messages %}<div class="messages" aria-live="polite">{% for message in messages %}<div class="message {{ message.tags }}">{{ message }}</div>{% endfor %}</div>{% endif %}{% block content %}{% endblock %}</main>
+<footer>Fundo San Carlos <span>Gestión de recursos · 2026</span></footer></div>
+{% else %}{% block public %}{% endblock %}{% endif %}</body></html>
