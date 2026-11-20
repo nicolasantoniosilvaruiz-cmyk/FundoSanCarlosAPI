@@ -155,7 +155,9 @@ def umbral(request):
 def lectura(request):
     data = json_body(request) or {}
     form = PorcentajeForm(data)
-    if not form.is_valid() or data.get('tipo') not in ('agua', 'petroleo'):
+    if data.get('tipo') == 'petroleo':
+        return error('Registra el combustible desde el módulo Petróleo.', 400)
+    if not form.is_valid() or data.get('tipo') != 'agua':
         return error('Elige un estanque e ingresa un porcentaje entre 0 y 100.', 400)
     estanque = Estanque.objects.filter(tipo=data['tipo']).first()
     if estanque is None:

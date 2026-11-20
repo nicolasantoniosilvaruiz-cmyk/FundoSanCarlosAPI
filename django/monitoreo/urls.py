@@ -3,8 +3,20 @@ from django.urls import path
 from . import views, api_agua, api_movil, push_views
 from .forms import IngresoForm
 from .salud import salud
+from . import gestion_views, gestion_api
 
 urlpatterns = [
+    path('api/movil/capacidad-visual/', gestion_api.capacidad_visual, name='movil_capacidad_visual'),
+    path('empleados/', gestion_views.empleados, name='empleados'),
+    path('empleados/nuevo/', gestion_views.empleado, name='empleado_nuevo'),
+    path('empleados/<int:pk>/', gestion_views.empleado, name='empleado'),
+    path('cuenta/clave/', gestion_views.clave, name='cambiar_clave'),
+    path('petroleo/', gestion_views.petroleo, name='petroleo'),
+    path('api/movil/empleados/', gestion_api.empleados, name='movil_empleados'),
+    path('api/movil/empleado/', gestion_api.empleado, name='movil_empleado'),
+    path('api/movil/clave/', gestion_api.clave, name='movil_clave'),
+    path('api/movil/petroleo/', gestion_api.petroleo, name='movil_petroleo'),
+    path('api/movil/movimiento/', gestion_api.movimiento, name='movil_movimiento'),
     path('salud/', salud, name='salud'),
     path('', views.panel, name='panel'),
     path('agua/', views.panel, {'solo_agua': True}, name='agua'),

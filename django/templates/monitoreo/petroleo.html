@@ -1,0 +1,18 @@
+{% extends 'base.html' %}{% block content %}
+<div class="page-heading"><div><h1>Petróleo</h1><p>Registra cada movimiento con la cuenta del responsable.</p></div><a class="button secondary" href="{% url 'petroleo' %}">Actualizar saldo</a></div>
+<section class="fuel-summary" aria-label="Estado del estanque">
+<div class="balance-card available"><dl><dt>Combustible disponible</dt><dd>{{ saldo.litros|floatformat:"-3g" }} <small>L</small></dd></dl></div>
+<div class="balance-card"><dl><dt>Capacidad del estanque</dt><dd>{{ saldo.estanque.capacidad_litros|floatformat:"0g" }} <small>L</small></dd></dl></div>
+</section>
+<section class="fuel-workspace">
+<article class="surface"><h2>Registrar movimiento</h2><p class="responsible">Responsable <strong>{{ user.get_full_name|default:user.username }}</strong></p>
+<form method="post" class="stack">{% csrf_token %}{{ form.non_field_errors }}{{ form.solicitud }}{{ form.revision }}
+{% if user.es_administrador %}<div class="field"><label for="id_tipo">Operación</label><select id="id_tipo" name="tipo"><option value="retiro" {% if form.tipo.value == 'retiro' %}selected{% endif %}>Retiro</option><option value="recarga" {% if form.tipo.value == 'recarga' %}selected{% endif %}>Recarga</option></select>{{ form.tipo.errors }}</div>{% else %}{{ form.tipo }}{% endif %}
+{% for field in form %}{% if field.name == 'antes' or field.name == 'cantidad' or field.name == 'despues' %}<div class="field"><label for="{{ field.id_for_label }}">{% if field.name == 'cantidad' %}Cantidad del movimiento (L){% else %}{{ field.label }}{% endif %}</label>{{ field }}{{ field.errors }}</div>{% endif %}{% endfor %}
+<button class="button primary" type="submit">Registrar movimiento</button></form></article>
+<article class="surface"><div class="section-heading"><h2>{% if user.es_administrador %}Movimientos del fundo{% else %}Mis movimientos{% endif %}</h2></div>
+<div class="table-scroll"><table><thead><tr><th>Fecha</th><th>Responsable</th><th>Operación</th><th>Antes (L)</th><th>Cantidad (L)</th><th>Después (L)</th></tr></thead><tbody>
+{% for m in movimientos %}<tr><td>{{ m.fecha|date:"d/m/Y H:i:s" }}</td><td><strong>{{ m.identidad }}</strong><small>{{ m.rut_responsable }}</small></td><td><span class="pill {% if m.tipo == 'retiro' %}retire-pill{% else %}good{% endif %}">{{ m.get_tipo_display }}</span></td><td>{{ m.antes|floatformat:"-3g" }}{% if m.antes != m.saldo_registrado %}<small>Saldo previo {{ m.saldo_registrado|floatformat:"-3g" }} L</small>{% endif %}</td><td><strong>{{ m.cantidad|floatformat:"-3g" }}</strong></td><td>{{ m.despues|floatformat:"-3g" }}</td></tr>
+{% empty %}<tr><td colspan="6" class="empty">Aquí aparecerán los movimientos registrados.</td></tr>{% endfor %}
+</tbody></table></div></article></section>
+{% endblock %}

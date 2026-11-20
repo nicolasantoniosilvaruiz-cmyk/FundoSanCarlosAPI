@@ -1,0 +1,23 @@
+{% extends 'base.html' %}{% block content %}
+<div class="page-heading"><h1>{{ titulo }}</h1><a class="button secondary" href="{% url volver %}">Volver</a></div>
+<article class="surface management-form"><form method="post" class="stack">{% csrf_token %}
+{{ form.non_field_errors }}
+<div class="form-fields">
+{% for field in form %}
+{% if field.name == 'is_active' %}
+<div class="field field-wide access-control">{{ field }}<div><label for="{{ field.id_for_label }}">{{ field.label }}</label><small>Al desactivar el acceso se conserva el historial del empleado.</small>{{ field.errors }}</div></div>
+{% else %}
+<div class="field {% if 'password' in field.name %}field-wide{% endif %}"><label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{{ field.errors }}{% if field.help_text %}<small>{{ field.help_text|safe }}</small>{% endif %}</div>
+{% endif %}
+{% endfor %}
+</div>
+<div class="form-actions"><button class="button primary" type="submit">Guardar cambios</button><a class="button secondary" href="{% url volver %}">Cancelar</a></div>
+</form></article>
+{% if empleado %}
+<article class="surface employee-history"><div class="section-heading"><h2>Retiros de {{ empleado.get_full_name|default:empleado.username }}</h2></div>
+<div class="management-summary"><div><strong>{{ empleado.retiros_count }}</strong><span>Retiros registrados</span></div><div><strong>{{ empleado.litros_retirados|floatformat:"-3g" }} L</strong><span>Total retirado</span></div></div>
+<div class="table-scroll"><table><thead><tr><th>Fecha</th><th>Antes (L)</th><th>Retirado (L)</th><th>Después (L)</th></tr></thead><tbody>
+{% for retiro in retiros %}<tr><td>{{ retiro.fecha|date:"d/m/Y H:i:s" }}</td><td>{{ retiro.antes|floatformat:"-3g" }}</td><td><strong>{{ retiro.cantidad|floatformat:"-3g" }}</strong></td><td>{{ retiro.despues|floatformat:"-3g" }}</td></tr>{% empty %}<tr><td colspan="4" class="empty">Este empleado todavía no tiene retiros registrados.</td></tr>{% endfor %}
+</tbody></table></div></article>
+{% endif %}
+{% endblock %}

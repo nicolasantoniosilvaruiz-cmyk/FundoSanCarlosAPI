@@ -9,9 +9,12 @@ import android.content.res.ColorStateList;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
+import android.graphics.Path;
 import android.graphics.RectF;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
+import android.graphics.drawable.RippleDrawable;
+import android.graphics.drawable.StateListDrawable;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
@@ -46,10 +49,15 @@ public final class MainActivity extends Activity {
     private LocalStore store;
     private LinearLayout frame, page;
     private ScrollView scroll;
-    private TextView notice;
+    private TextView notice, screenTitle, screenIdentity;
+    private LinearLayout navigationBar;
+    private boolean shellIsLogin = true, navigationForAdmin;
     private EditText thresholdField, readingField;
     private Spinner tankPicker;
     private JSONObject data;
+    private JSONObject fuelData, editingEmployee;
+    private JSONArray employeesData;
+
     private String tab="inicio";
     private String liveToken="", liveOrigin="";
     private boolean busy, foreground, online, firebaseReady, returningFromSettings, pushLinkAttempted;
@@ -66,7 +74,8 @@ public final class MainActivity extends Activity {
         super.onCreate(state);
         getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
         getWindow().setStatusBarColor(GREEN);
-        getWindow().setNavigationBarColor(GREEN);
+        getWindow().setNavigationBarColor(WHITE);
+        getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
         store=new LocalStore(this);
         number.setMaximumFractionDigits(2);
         PushAndroid.createChannel(this);
@@ -148,8 +157,12 @@ public final class MainActivity extends Activity {
     private Button button(String title, boolean primary, View.OnClickListener click) {
         Button b=new Button(this); b.setText(title); b.setTextSize(15); b.setAllCaps(false);
         b.setTextColor(primary?WHITE:GREEN);
-        b.setBackground(bg(primary?GREEN:0xFFE7F0EB,12));
-        b.setMinHeight(dp(52)); b.setPadding(dp(14),dp(10),dp(14),dp(10));
+        b.setBackground(new RippleDrawable(ColorStateList.valueOf(0x22173D32),
+            bg(primary?GREEN:0xFFE7F0EB,14),null));
+        b.setBackgroundTintList(null);
+        b.setTypeface(Typeface.create("sans-serif-medium",Typeface.NORMAL));
+        b.setMinWidth(0); b.setMinimumWidth(0);
+        b.setMinHeight(dp(52)); b.setPadding(dp(16),dp(12),dp(16),dp(12));
         b.setOnClickListener(click);
         return b;
     }
@@ -157,7 +170,9 @@ public final class MainActivity extends Activity {
         gap(parent,12); parent.addView(button(label,primary,listener),new LinearLayout.LayoutParams(-1,-2));
     }
     private LinearLayout card() {
-        LinearLayout c=column(); c.setPadding(dp(18),dp(16),dp(18),dp(16)); c.setBackground(bg(WHITE,18));
+        LinearLayout c=column(); c.setPadding(dp(20),dp(20),dp(20),dp(20));
+        GradientDrawable background=bg(WHITE,22); background.setStroke(dp(1),LINE);
+        c.setBackground(background); c.setElevation(dp(1));
         LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,-2); lp.bottomMargin=dp(14);
         page.addView(c,lp); return c;
     }
@@ -167,11 +182,29 @@ public final class MainActivity extends Activity {
         EditText field=new EditText(this);
         field.setId(View.generateViewId()); caption.setLabelFor(field.getId());
         field.setInputType(type); field.setSingleLine(true); field.setText(value); field.setTextColor(INK); field.setTextSize(16);
-        field.setPadding(dp(12),dp(10),dp(12),dp(10)); field.setMinHeight(dp(52)); field.setBackground(bg(BG,10));
+        field.setPadding(dp(14),dp(12),dp(14),dp(12)); field.setMinHeight(dp(54));
+        GradientDrawable focused=bg(WHITE,12); focused.setStroke(dp(2),GREEN);
+        GradientDrawable idle=bg(BG,12); idle.setStroke(dp(1),LINE);
+        StateListDrawable fieldBackground=new StateListDrawable();
+        fieldBackground.addState(new int[]{android.R.attr.state_focused},focused);
+        fieldBackground.addState(new int[]{},idle);
+        field.setBackground(fieldBackground);
         LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,-2); lp.topMargin=dp(5);
         parent.addView(field,lp); return field;
     }
     private void shell(boolean login) {
+        // Keep navigation and system insets mounted while levels refresh.
+        if(!login && frame!=null && !shellIsLogin && navigationForAdmin==admin()){
+            screenTitle.setText(headerTitle());
+            screenIdentity.setText(data==null?"":data.optString("nombre")+" · "+(admin()?"Administrador":"Trabajador"));
+            screenIdentity.setVisibility(data==null?View.GONE:View.VISIBLE);
+            page.removeAllViews();
+            addNotice();
+            updateNavigation();
+            return;
+        }
+        shellIsLogin=login;
+        navigationForAdmin=admin();
         frame=column(); frame.setBackgroundColor(BG);
         frame.setOnApplyWindowInsetsListener((v,insets)->{
             if (Build.VERSION.SDK_INT >= 30) {
@@ -185,22 +218,31 @@ public final class MainActivity extends Activity {
         LinearLayout header=column(); header.setBackgroundColor(GREEN);
         header.setPadding(dp(22),dp(18),dp(22),dp(17));
         header.addView(text("FUNDO SAN CARLOS",12,0xFFC0DFD2,true));
-        header.addView(text(login?"Control de recursos":headerTitle(),25,WHITE,true));
-        if (!login && data!=null) {
-            header.addView(text(data.optString("nombre")+" · "+(admin()?"Administrador":"Trabajador"),13,0xFFD3E6DC,false));
-        }
+        screenTitle=text(login?"Control de recursos":headerTitle(),25,WHITE,true);
+        header.addView(screenTitle);
+        screenIdentity=text(!login&&data!=null
+            ?data.optString("nombre")+" · "+(admin()?"Administrador":"Trabajador"):"",13,0xFFD3E6DC,false);
+        screenIdentity.setVisibility(!login&&data!=null?View.VISIBLE:View.GONE);
+        header.addView(screenIdentity);
         frame.addView(header);
         scroll=new ScrollView(this); scroll.setFillViewport(true);
         page=column(); page.setPadding(dp(18),dp(18),dp(18),dp(22));
         scroll.addView(page,new ScrollView.LayoutParams(-1,-2));
         frame.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
-        notice=text("",14,MUTED,false); notice.setVisibility(View.GONE); notice.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);
-        page.addView(notice);
+        addNotice();
+        navigationBar=null;
         if (!login) {
-            LinearLayout nav=row(); nav.setPadding(dp(8),dp(7),dp(8),dp(7)); nav.setBackgroundColor(WHITE);
-            tabButton(nav,"Inicio","inicio"); tabButton(nav,"Agua","agua");
-            if(admin()) tabButton(nav,"Alertas","alertas");
-            tabButton(nav,"Cuenta","cuenta"); frame.addView(nav);
+            navigationBar=row();
+            navigationBar.setPadding(dp(4),dp(8),dp(4),dp(6));
+            navigationBar.setBackgroundColor(WHITE);
+            navigationBar.setElevation(dp(8));
+            tabButton(navigationBar,"Inicio","inicio");
+            tabButton(navigationBar,"Agua","agua");
+            tabButton(navigationBar,"Petróleo","petroleo");
+            if(admin())tabButton(navigationBar,"Alertas","alertas");
+            tabButton(navigationBar,"Cuenta","cuenta");
+            frame.addView(navigationBar,new LinearLayout.LayoutParams(-1,-2));
+            updateNavigation();
         }
         setContentView(frame);
         frame.requestApplyInsets();
@@ -211,15 +253,125 @@ public final class MainActivity extends Activity {
             case "alertas" -> "Alertas de agua";
             case "lectura" -> "Registro de lecturas";
             case "cuenta" -> "Mi cuenta";
+            case "petroleo" -> "Petróleo";
+            case "empleados" -> "Empleados";
+            case "empleado" -> "Datos del empleado";
+            case "clave" -> "Cambiar contraseña";
             default -> "Vista general";
         };
     }
-    private void tabButton(LinearLayout nav, String label, String target) {
-        Button b=button(label,tab.equals(target),v->{ if(!busy){tab=target;render();if(target.equals("agua")||target.equals("inicio")||target.equals("alertas")) refresh(false);} });
-        b.setTextSize(13); b.setPadding(dp(4),dp(7),dp(4),dp(7));
-        LinearLayout.LayoutParams params=new LinearLayout.LayoutParams(0,-2,1); params.setMargins(dp(3),0,dp(3),0);
-        nav.addView(b,params);
+    private void addNotice() {
+        notice=text("",14,MUTED,false);
+        notice.setVisibility(View.GONE);
+        notice.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);
+        page.addView(notice);
     }
+
+    private String navigationTarget() {
+        return switch(tab) {
+            case "clave", "empleados", "empleado" -> "cuenta";
+            case "lectura" -> "inicio";
+            default -> tab;
+        };
+    }
+
+    private void navigate(String target) {
+        if(target.equals(tab))return;
+        if(target.equals("petroleo"))fuelData=null;
+        tab=target;
+        if(scroll!=null)scroll.scrollTo(0,0);
+        render();
+        if(target.equals("agua")||target.equals("inicio")||target.equals("alertas"))refresh(false);
+    }
+
+    private void tabButton(LinearLayout nav, String label, String target) {
+        LinearLayout item=column();
+        item.setTag(target); item.setGravity(Gravity.CENTER);
+        item.setMinimumHeight(dp(64)); item.setPadding(dp(2),dp(3),dp(2),dp(3));
+        item.setClickable(true); item.setFocusable(true);
+        item.setContentDescription(label);
+        item.setBackground(new RippleDrawable(ColorStateList.valueOf(0x22173D32),bg(WHITE,16),null));
+        LinearLayout iconContainer=column(); iconContainer.setGravity(Gravity.CENTER);
+        iconContainer.addView(new NavigationIcon(target),new LinearLayout.LayoutParams(dp(24),dp(24)));
+        item.addView(iconContainer,new LinearLayout.LayoutParams(dp(52),dp(32)));
+        TextView caption=text(label,11,MUTED,false);
+        caption.setGravity(Gravity.CENTER); caption.setSingleLine(true);
+        caption.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+        LinearLayout.LayoutParams captionParams=new LinearLayout.LayoutParams(-1,-2);
+        captionParams.topMargin=dp(3);
+        item.addView(caption,captionParams);
+        item.setOnClickListener(v->navigate(target));
+        nav.addView(item,new LinearLayout.LayoutParams(0,-2,1));
+    }
+
+    private void updateNavigation() {
+        if(navigationBar==null)return;
+        for(int i=0;i<navigationBar.getChildCount();i++){
+            LinearLayout item=(LinearLayout)navigationBar.getChildAt(i);
+            boolean selected=navigationTarget().equals(item.getTag());
+            item.setSelected(selected);
+            LinearLayout iconContainer=(LinearLayout)item.getChildAt(0);
+            iconContainer.setBackground(bg(selected?0xFFE1EEE5:WHITE,16));
+            NavigationIcon icon=(NavigationIcon)iconContainer.getChildAt(0);
+            icon.color=selected?GREEN:MUTED; icon.invalidate();
+            TextView caption=(TextView)item.getChildAt(1);
+            caption.setTextColor(selected?GREEN:MUTED);
+            caption.setTypeface(null,selected?Typeface.BOLD:Typeface.NORMAL);
+        }
+    }
+
+    private final class NavigationIcon extends View {
+        private final String target;
+        private final Paint pen=new Paint(Paint.ANTI_ALIAS_FLAG);
+        private int color=MUTED;
+
+        NavigationIcon(String target) {
+            super(MainActivity.this);
+            this.target=target;
+            setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+        }
+
+        @Override protected void onDraw(Canvas canvas) {
+            super.onDraw(canvas);
+            canvas.save();
+            canvas.scale(getWidth()/24f,getHeight()/24f);
+            pen.setColor(color); pen.setStyle(Paint.Style.STROKE);
+            pen.setStrokeWidth(1.8f); pen.setStrokeCap(Paint.Cap.ROUND); pen.setStrokeJoin(Paint.Join.ROUND);
+            Path path=new Path();
+            switch(target){
+                case "inicio" -> {
+                    path.moveTo(3,10);path.lineTo(12,3);path.lineTo(21,10);
+                    path.moveTo(5,9);path.lineTo(5,21);path.lineTo(10,21);path.lineTo(10,15);
+                    path.lineTo(14,15);path.lineTo(14,21);path.lineTo(19,21);path.lineTo(19,9);
+                    canvas.drawPath(path,pen);
+                }
+                case "agua" -> {
+                    path.moveTo(12,2);path.cubicTo(9,6,5,10,5,14);
+                    path.cubicTo(5,23,19,23,19,14);path.cubicTo(19,10,15,6,12,2);
+                    path.close();canvas.drawPath(path,pen);
+                    canvas.drawArc(new RectF(8,11,16,18),85,85,false,pen);
+                }
+                case "petroleo" -> {
+                    canvas.drawRoundRect(new RectF(4,6,17,21),2,2,pen);
+                    canvas.drawRect(7,2,14,6,pen);
+                    path.moveTo(17,9);path.lineTo(21,12);path.lineTo(21,19);canvas.drawPath(path,pen);
+                    canvas.drawLine(8,12,13,12,pen);canvas.drawLine(8,16,13,16,pen);
+                }
+                case "alertas" -> {
+                    path.moveTo(5,17);path.lineTo(7,14);path.lineTo(7,9);
+                    path.cubicTo(7,2,17,2,17,9);path.lineTo(17,14);path.lineTo(19,17);
+                    path.close();canvas.drawPath(path,pen);
+                    canvas.drawArc(new RectF(9,17,15,22),0,180,false,pen);
+                }
+                default -> {
+                    canvas.drawCircle(12,7,4,pen);
+                    canvas.drawArc(new RectF(4,13,20,27),180,180,false,pen);
+                }
+            }
+            canvas.restore();
+        }
+    }
+
     private void setNotice(String message, boolean good) {
         if(notice==null)return;
         notice.setVisibility(message.isEmpty()?View.GONE:View.VISIBLE);
@@ -288,7 +440,7 @@ public final class MainActivity extends Activity {
     }
     private void render(){
         if(liveToken.isEmpty()){showLogin();return;}
-        if(!admin() && (tab.equals("alertas")||tab.equals("lectura"))) tab="inicio";
+        if(!admin() && (tab.equals("alertas")||tab.equals("lectura")||tab.equals("empleados")||tab.equals("empleado"))) tab="inicio";
         shell(false);
         if(!online && data!=null) setNotice("Sin conexión · mostrando los últimos datos guardados",false);
         if(data==null && !tab.equals("cuenta")){
@@ -301,6 +453,10 @@ public final class MainActivity extends Activity {
             case "alertas" -> alerts();
             case "lectura" -> reading();
             case "cuenta" -> account();
+            case "petroleo" -> fuel();
+            case "empleados" -> employees();
+            case "empleado" -> employeeForm();
+            case "clave" -> passwordForm();
             default -> dashboard();
         }
     }
@@ -332,6 +488,10 @@ public final class MainActivity extends Activity {
     }
     private String formatVolume(JSONObject tank, double liters) {
         String unit = tank == null ? "" : tank.optString("unidad_volumen");
+        if(tank!=null&&!tank.isNull("capacidad_visible")&&tank.optDouble("capacidad",0)>0){
+            double displayed=liters*tank.optDouble("capacidad_visible")/tank.optDouble("capacidad");
+            return number.format(displayed)+" "+(unit.isEmpty()?"L":unit);
+        }
         boolean milliliters = "mL".equals(unit) || (tank != null && unit.isEmpty()
             && "agua".equals(tank.optString("tipo")) && tank.optDouble("capacidad", 2) <= 1);
         return milliliters ? number.format(Math.round(liters * 1000)) + " mL" : number.format(liters) + " L";
@@ -410,7 +570,7 @@ public final class MainActivity extends Activity {
         c.addView(text("Selecciona el estanque e ingresa el porcentaje observado.",14,MUTED,false));
         gap(c,12);
         tankPicker=new Spinner(this);
-        tankPicker.setAdapter(new ArrayAdapter<>(this,android.R.layout.simple_spinner_dropdown_item,new String[]{"Estanque de agua","Estanque de petróleo"}));
+        tankPicker.setAdapter(new ArrayAdapter<>(this,android.R.layout.simple_spinner_dropdown_item,new String[]{"Estanque de agua"}));
         tankPicker.setMinimumHeight(dp(48));tankPicker.setContentDescription("Estanque");
         c.addView(tankPicker);
         readingField=input(c,"Nivel (%)","",InputType.TYPE_CLASS_NUMBER|InputType.TYPE_NUMBER_FLAG_DECIMAL);
@@ -422,11 +582,31 @@ public final class MainActivity extends Activity {
                 return Api.request(liveOrigin,"panel",liveToken,null);
             },r->{updatePanel(r);tab="inicio";render();setNotice("Lectura guardada.",true);},true);
         });
-        putButton(c,"Volver al panel",false,v->{if(!busy){tab="inicio";render();}});
+        putButton(c,"Volver al panel",false,v->navigate("inicio"));
+        LinearLayout capacityCard=card();
+        capacityCard.addView(text("Capacidad de visualización",20,INK,true));
+        capacityCard.addView(text("Define el máximo que representa el porcentaje del agua.",14,MUTED,false));
+        JSONObject waterTank=water();
+        double represented=waterTank.optDouble("capacidad_visible",waterTank.optDouble("capacidad",1));
+        if("mL".equals(waterTank.optString("unidad_volumen")))represented/=1000;
+        EditText maximum=input(capacityCard,"Capacidad representada (L)",
+            java.math.BigDecimal.valueOf(represented).stripTrailingZeros().toPlainString(),
+            InputType.TYPE_CLASS_NUMBER|InputType.TYPE_NUMBER_FLAG_DECIMAL);
+        putButton(capacityCard,"Guardar capacidad",true,v->{
+            final String value=maximum.getText().toString().trim().replace(',','.');
+            call("Guardando capacidad…",()->{
+                Api.request(liveOrigin,"capacidad-visual",liveToken,new JSONObject().put("capacidad_visual_litros",value));
+                return Api.request(liveOrigin,"panel",liveToken,null);
+            },r->{updatePanel(r);render();setNotice("Capacidad de visualización actualizada.",true);},true);
+        });
     }
     private void account(){
         LinearLayout c=card();
         c.addView(text(store.user(),20,INK,true));
+        putButton(c,"Cambiar contraseña",false,v->navigate("clave"));
+        if(admin()) putButton(c,"Gestionar empleados",false,v->{
+            employeesData=null; navigate("empleados");
+        });
         c.addView(text(BuildConfig.DEBUG?"Servidor: "+liveOrigin:"Conexión de San Carlos",14,MUTED,false));
         putButton(c,"Cerrar sesión",true,v->{
             if(busy)return;
@@ -446,6 +626,172 @@ public final class MainActivity extends Activity {
                 }).show());
         }
     }
+
+    private EditText passwordInput(LinearLayout container, String label) {
+        EditText field=input(container,label,"",InputType.TYPE_CLASS_TEXT|InputType.TYPE_TEXT_VARIATION_PASSWORD);
+        field.setTransformationMethod(PasswordTransformationMethod.getInstance());
+        return field;
+    }
+
+    private void passwordForm() {
+        LinearLayout c=card();
+        EditText current=passwordInput(c,"Contraseña actual");
+        EditText password=passwordInput(c,"Nueva contraseña");
+        EditText confirm=passwordInput(c,"Repite la nueva contraseña");
+        putButton(c,"Guardar contraseña",true,v->{
+            final String oldValue=current.getText().toString();
+            final String newValue=password.getText().toString();
+            final String confirmation=confirm.getText().toString();
+            call("Actualizando contraseña…",()->Api.request(liveOrigin,"clave",liveToken,new JSONObject()
+                .put("old_password",oldValue).put("new_password1",newValue).put("new_password2",confirmation)),
+                r->{tab="cuenta";render();setNotice("Contraseña actualizada.",true);},true);
+        });
+    }
+
+    private void fuel() {
+        if(fuelData==null) {
+            card().addView(text("Consultando saldo…",16,MUTED,false));
+            call("Consultando petróleo…",()->Api.request(liveOrigin,"petroleo",liveToken,null),
+                r->{fuelData=r;if(tab.equals("petroleo"))render();},true);
+            return;
+        }
+        LinearLayout c=card();
+        c.addView(text("COMBUSTIBLE DISPONIBLE",11,AMBER,true));
+        gap(c,6);
+        c.addView(text(number.format(fuelData.optDouble("saldo"))+" L",30,INK,true));
+        c.addView(text("Capacidad total "+number.format(fuelData.optDouble("capacidad"))+" L",14,MUTED,false));
+        putButton(c,"Actualizar saldo",false,v->{if(!busy){fuelData=null;render();}});
+        final Spinner operation=new Spinner(this);
+        String[] choices=admin()?new String[]{"Retiro","Recarga"}:new String[]{"Retiro"};
+        operation.setAdapter(new ArrayAdapter<>(this,android.R.layout.simple_spinner_dropdown_item,choices));
+        c.addView(operation);
+        int numeric=InputType.TYPE_CLASS_NUMBER|InputType.TYPE_NUMBER_FLAG_DECIMAL;
+        EditText before=input(c,"Cantidad actual (L)","",numeric);
+        EditText amount=input(c,"Cantidad del movimiento (L)","",numeric);
+        EditText after=input(c,"Cantidad que quedó (L)","",numeric);
+        final int revision=fuelData.optInt("revision");
+        final String requestId=java.util.UUID.randomUUID().toString();
+        putButton(c,"Registrar movimiento",true,v->{
+            String initial=before.getText().toString().trim().replace(',','.');
+            String quantity=amount.getText().toString().trim().replace(',','.');
+            String remaining=after.getText().toString().trim().replace(',','.');
+            String type=operation.getSelectedItemPosition()==1?"recarga":"retiro";
+            call("Guardando movimiento…",()->{
+                Api.request(liveOrigin,"movimiento",liveToken,new JSONObject()
+                    .put("solicitud",requestId).put("revision",revision).put("tipo",type)
+                    .put("antes",initial).put("cantidad",quantity).put("despues",remaining));
+                return Api.request(liveOrigin,"petroleo",liveToken,null);
+            },r->{fuelData=r;if(tab.equals("petroleo")){render();setNotice("Movimiento registrado.",true);}},true);
+        });
+        LinearLayout history=card();
+        history.addView(text(admin()?"Movimientos del fundo":"Mis movimientos",20,INK,true));
+        JSONArray movements=fuelData.optJSONArray("movimientos");
+        if(movements==null||movements.length()==0)history.addView(text("No hay movimientos registrados.",14,MUTED,false));
+        if(movements!=null)for(int i=0;i<movements.length();i++){
+            JSONObject movement=movements.optJSONObject(i);
+            if(movement==null)continue;
+            gap(history,12);
+            history.addView(text(date(movement.optString("fecha"))+" · "+movement.optString("tipo"),14,INK,true));
+            history.addView(text(movement.optString("responsable")+" · "+movement.optString("rut"),13,MUTED,false));
+            history.addView(text("Antes: "+movement.optString("antes")+" L · "+
+                "Cantidad: "+movement.optString("cantidad")+" L · Después: "+movement.optString("despues")+" L",14,INK,false));
+            if(!movement.optString("antes").equals(movement.optString("saldo_registrado")))
+                history.addView(text("Saldo previo del sistema: "+movement.optString("saldo_registrado")+" L",12,MUTED,false));
+        }
+    }
+
+    private void employees() {
+        if(!admin())return;
+        if(employeesData==null) {
+            card().addView(text("Consultando empleados…",16,MUTED,false));
+            call("Consultando empleados…",()->Api.request(liveOrigin,"empleados",liveToken,null),
+                r->{employeesData=r.optJSONArray("empleados");if(tab.equals("empleados"))render();},true);
+            return;
+        }
+        LinearLayout actions=card();
+        putButton(actions,"Ingresar empleado",true,v->{editingEmployee=null;navigate("empleado");});
+        for(int i=0;i<employeesData.length();i++){
+            final JSONObject employee=employeesData.optJSONObject(i);
+            if(employee==null)continue;
+            LinearLayout c=card();
+            c.addView(text(employee.optString("username")+" · "+employee.optString("rol"),18,INK,true));
+            c.addView(text(employee.optString("first_name")+" "+employee.optString("last_name"),15,INK,false));
+            c.addView(text(employee.optString("rut")+" · "+employee.optString("email"),13,MUTED,false));
+            c.addView(text(employee.optBoolean("is_active")?"Activo":"Desactivado",14,MUTED,true));
+            c.addView(text(employee.optInt("retiros_count")+" retiros · "+
+                employee.optString("litros_retirados","0")+" L retirados",14,INK,true));
+            putButton(c,"Consultar / editar",false,v->{editingEmployee=employee;navigate("empleado");});
+        }
+    }
+
+    private void employeeForm() {
+        if(!admin())return;
+        if(editingEmployee!=null&&!editingEmployee.has("retiros")){
+            final int id=editingEmployee.optInt("id");
+            card().addView(text("Consultando ficha del empleado…",16,MUTED,false));
+            call("Consultando retiros…",()->Api.request(liveOrigin,"empleado",liveToken,
+                new JSONObject().put("id",id).put("accion","consultar")),
+                r->{editingEmployee=r;render();},true);
+            return;
+        }
+        LinearLayout c=card();
+        JSONObject account=editingEmployee==null?new JSONObject():editingEmployee;
+        int plain=InputType.TYPE_CLASS_TEXT;
+        EditText username=input(c,"Usuario",account.optString("username"),plain);
+        EditText first=input(c,"Nombre",account.optString("first_name"),plain);
+        EditText last=input(c,"Apellido",account.optString("last_name"),plain);
+        EditText rut=input(c,"RUT",account.optString("rut"),plain);
+        EditText email=input(c,"Correo",account.optString("email"),plain|InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS);
+        Spinner role=new Spinner(this);
+        role.setAdapter(new ArrayAdapter<>(this,android.R.layout.simple_spinner_dropdown_item,new String[]{"Trabajador","Administrador"}));
+        role.setSelection("administrador".equals(account.optString("rol"))?1:0);
+        c.addView(role);
+        Switch active=new Switch(this);
+        active.setText("Acceso activo");
+        active.setChecked(account.optBoolean("is_active",true));
+        if(editingEmployee!=null)c.addView(active);
+        EditText password=editingEmployee==null?passwordInput(c,"Contraseña inicial"):null;
+        EditText confirmation=editingEmployee==null?passwordInput(c,"Repite contraseña"):null;
+        final int employeeId=account.optInt("id");
+        putButton(c,"Guardar empleado",true,v->{
+            final JSONObject payload=new JSONObject();
+            try {
+                payload.put("username",username.getText().toString().trim())
+                    .put("first_name",first.getText().toString().trim())
+                    .put("last_name",last.getText().toString().trim())
+                    .put("rut",rut.getText().toString().trim())
+                    .put("email",email.getText().toString().trim())
+                    .put("rol",role.getSelectedItemPosition()==1?"administrador":"trabajador")
+                    .put("is_active",active.isChecked());
+                if(employeeId>0)payload.put("id",employeeId);
+                else payload.put("password1",password.getText().toString()).put("password2",confirmation.getText().toString());
+            } catch(Exception error) {setNotice("Revisa los datos del empleado.",false);return;}
+            call("Guardando empleado…",()->{
+                Api.request(liveOrigin,"empleado",liveToken,payload);
+                return Api.request(liveOrigin,"empleados",liveToken,null);
+            },r->{employeesData=r.optJSONArray("empleados");tab="empleados";render();setNotice("Empleado guardado.",true);},true);
+        });
+        putButton(c,"Volver",false,v->navigate("empleados"));
+        if(editingEmployee!=null){
+            LinearLayout history=card();
+            history.addView(text("Retiros del empleado",20,INK,true));
+            history.addView(text(account.optInt("retiros_count")+" retiros registrados",16,GREEN,true));
+            history.addView(text("Total retirado: "+account.optString("litros_retirados","0")+" L",15,INK,false));
+            JSONArray withdrawals=account.optJSONArray("retiros");
+            if(withdrawals==null||withdrawals.length()==0)
+                history.addView(text("Este empleado todavía no tiene retiros registrados.",14,MUTED,false));
+            if(withdrawals!=null)for(int i=0;i<withdrawals.length();i++){
+                JSONObject withdrawal=withdrawals.optJSONObject(i);
+                if(withdrawal==null)continue;
+                gap(history,12);
+                history.addView(text(date(withdrawal.optString("fecha"))+
+                    " · Retirado: "+withdrawal.optString("cantidad")+" L",14,INK,true));
+                history.addView(text("Antes: "+withdrawal.optString("antes")+" L · Después: "+
+                    withdrawal.optString("despues")+" L",13,MUTED,false));
+            }
+        }
+    }
+
     private String percent(EditText field){
         try{
             var decimal=new java.math.BigDecimal(field.getText().toString().trim().replace(',','.'));
@@ -459,7 +805,7 @@ public final class MainActivity extends Activity {
         catch(RuntimeException e){return "Sin fecha";}
     }
     private void clearSession(String message){
-        store.clearSession();liveToken="";data=null;online=false;tab="inicio";showLogin();setNotice(message,true);
+        fuelData=null;employeesData=null;editingEmployee=null;store.clearSession();liveToken="";data=null;online=false;tab="inicio";showLogin();setNotice(message,true);
     }
     private void updatePanel(JSONObject r){data=r;online=true;store.savePanel(r);}
     private void refresh(boolean visible){
@@ -478,17 +824,26 @@ public final class MainActivity extends Activity {
     private void call(String working, Task task, Done done, boolean authenticated){
         if(busy)return;
         busy=true;
+        final String requestedTab=tab;
+        final String requestedSession=liveToken;
         if(!working.isEmpty())setNotice(working,true);
         network.execute(()->{
             try{
                 JSONObject result=task.run();
-                runOnUiThread(()->{busy=false;if(!isDestroyed())done.run(result);});
+                runOnUiThread(()->{
+                    busy=false;
+                    if(isDestroyed()||!requestedSession.equals(liveToken))return;
+                    if(tab.equals(requestedTab))done.run(result);
+                    else render();
+                });
             }catch(Exception error){
                 runOnUiThread(()->{
-                    busy=false;if(isDestroyed())return;
+                    busy=false;
+                    if(isDestroyed()||!requestedSession.equals(liveToken))return;
                     if(authenticated&&error instanceof Api.Error e&&e.status==401){
                         clearSession("La sesión expiró. Vuelve a ingresar.");return;
                     }
+                    if(!tab.equals(requestedTab)){render();return;}
                     if(error instanceof Api.Error) setNotice(error.getMessage(),false);
                     else {
                         online=false;

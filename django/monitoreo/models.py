@@ -3,6 +3,7 @@ from decimal import Decimal
 from django.contrib.auth.models import AbstractUser
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
+from django.db.models.functions import Round
 
 
 class Usuario(AbstractUser):
@@ -10,6 +11,7 @@ class Usuario(AbstractUser):
         ADMINISTRADOR = 'administrador', 'Administrador'
         TRABAJADOR = 'trabajador', 'Trabajador'
 
+    rut = models.CharField(max_length=12, unique=True, null=True, blank=True)
     rol = models.CharField(max_length=20, choices=Rol.choices, default=Rol.TRABAJADOR)
 
     @property
@@ -25,21 +27,30 @@ class Estanque(models.Model):
     nombre = models.CharField(max_length=100)
     tipo = models.CharField(max_length=12, choices=Tipo.choices, unique=True)
     capacidad_litros = models.DecimalField(max_digits=12, decimal_places=3, validators=[MinValueValidator(Decimal('0.001'))])
+    capacidad_visual_litros = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True, validators=[MinValueValidator(Decimal('0.001'))])
     umbral_pct = models.DecimalField(max_digits=5, decimal_places=2, default=30, validators=[MinValueValidator(0), MaxValueValidator(100)])
 
     class Meta:
         ordering = ['tipo']
         constraints = [
             models.CheckConstraint(condition=models.Q(capacidad_litros__gt=0), name='capacidad_positiva'),
+            models.CheckConstraint(condition=models.Q(capacidad_visual_litros__isnull=True) | models.Q(capacidad_visual_litros__gt=0), name='capacidad_visual_positiva'),
             models.CheckConstraint(condition=models.Q(umbral_pct__gte=0, umbral_pct__lte=100), name='umbral_valido'),
         ]
 
     @property
+    def capacidad_representada(self):
+        if self.tipo == self.Tipo.AGUA and self.capacidad_visual_litros is not None:
+            return self.capacidad_visual_litros
+        return self.capacidad_litros
+
+    @property
     def unidad_volumen(self):
-        return 'mL' if self.tipo == self.Tipo.AGUA and self.capacidad_litros <= 1 else 'L'
+        return 'mL' if self.tipo == self.Tipo.AGUA and self.capacidad_representada <= 1 else 'L'
 
     def volumen_visible(self, litros):
-        return litros * 1000 if self.unidad_volumen == 'mL' else litros
+        representado = litros * self.capacidad_representada / self.capacidad_litros
+        return representado * 1000 if self.unidad_volumen == 'mL' else representado
 
     def __str__(self):
         return self.nombre
@@ -112,3 +123,39 @@ class SesionMovil(models.Model):
     expira_en = models.DateTimeField(db_index=True)
     fcm_token = models.TextField(blank=True, editable=False)
     fcm_hash = models.CharField(max_length=64, null=True, unique=True, editable=False)
+
+
+
+class SaldoPetroleo(models.Model):
+    estanque = models.OneToOneField(Estanque, on_delete=models.PROTECT)
+    litros = models.DecimalField(max_digits=12, decimal_places=3)
+    revision = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(condition=models.Q(litros__gte=0), name='saldo_petroleo_no_negativo'),
+        ]
+
+
+class MovimientoPetroleo(models.Model):
+    solicitud = models.UUIDField(unique=True)
+    saldo = models.ForeignKey(SaldoPetroleo, on_delete=models.PROTECT, related_name='movimientos')
+    usuario = models.ForeignKey(Usuario, on_delete=models.PROTECT)
+    identidad = models.CharField(max_length=310)
+    rut_responsable = models.CharField(max_length=12, blank=True)
+    saldo_registrado = models.DecimalField(max_digits=12, decimal_places=3)
+    tipo = models.CharField(max_length=10, choices=[('retiro', 'Retiro'), ('recarga', 'Recarga')])
+    antes = models.DecimalField(max_digits=12, decimal_places=3)
+    cantidad = models.DecimalField(max_digits=12, decimal_places=3)
+    despues = models.DecimalField(max_digits=12, decimal_places=3)
+    fecha = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-fecha', '-pk']
+        constraints = [
+            models.CheckConstraint(condition=models.Q(antes__gte=0, cantidad__gt=0, despues__gte=0), name='movimiento_volumen_valido'),
+            models.CheckConstraint(condition=(
+                models.Q(tipo='retiro', despues=Round(models.F('antes') - models.F('cantidad'), 3))
+                | models.Q(tipo='recarga', despues=Round(models.F('antes') + models.F('cantidad'), 3))
+            ), name='movimiento_balance_valido'),
+        ]

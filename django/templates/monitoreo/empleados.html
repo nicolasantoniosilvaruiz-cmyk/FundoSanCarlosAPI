@@ -1,0 +1,13 @@
+{% extends 'base.html' %}{% block content %}
+<div class="page-heading"><div><h1>Empleados</h1><p>Consulta sus retiros y administra el acceso al fundo.</p></div><a class="button primary" href="{% url 'empleado_nuevo' %}">Ingresar empleado</a></div>
+<article class="surface"><div class="table-scroll"><table>
+<thead><tr><th>Empleado</th><th>RUT</th><th>Correo</th><th>Rol</th><th>Retiros</th><th>Estado</th><th>Acciones</th></tr></thead>
+<tbody>{% for empleado in empleados %}<tr>
+<td><strong>{{ empleado.get_full_name|default:empleado.username }}</strong><small>{{ empleado.username }}</small></td>
+<td>{{ empleado.rut|default:"—" }}</td><td>{{ empleado.email|default:"—" }}</td>
+<td><span class="pill role-pill">{{ empleado.get_rol_display }}</span></td>
+<td><strong>{{ empleado.retiros_count }}</strong></td>
+<td>{% if empleado.is_active %}<span class="pill good">Activo</span>{% else %}<span class="pill neutral">Desactivado</span>{% endif %}</td>
+<td><a class="button secondary" href="{% url 'empleado' empleado.pk %}">Ver y editar</a></td>
+</tr>{% endfor %}</tbody></table></div></article>
+{% endblock %}
