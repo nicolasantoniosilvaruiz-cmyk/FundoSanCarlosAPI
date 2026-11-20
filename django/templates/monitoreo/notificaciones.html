@@ -1,0 +1,47 @@
+<article class="surface history" id="push-controls" data-key="{{ push_key }}" data-url="{% url 'push_suscripcion' %}" data-worker="{% url 'service_worker' %}?v=3">
+  <div class="section-heading"><h2>Notificaciones al teléfono</h2></div>
+  <p class="muted">Recibe un aviso cuando el agua baje del umbral, aunque no estés mirando el panel.</p>
+  {% csrf_token %}
+  <div class="push-actions">
+    <button type="button" class="button primary" data-push="enable" disabled>Activar notificaciones</button>
+    <button type="button" class="button secondary" data-push="disable" disabled>Desactivar en este dispositivo</button>
+  </div>
+  <p id="push-status" class="small muted" role="status" aria-live="polite">Cargando los controles de notificaciones…</p>
+  <section id="push-help" class="note" aria-label="Cómo permitir los avisos" hidden>
+    <div data-help="android" hidden>
+      <h3>Permite los avisos de San Carlos</h3>
+      <ol>
+        <li>En Chrome, toca el ícono a la izquierda de la dirección de esta página.</li>
+        <li>Toca <strong>Permisos → Notificaciones → Permitir</strong>.</li>
+        <li>Vuelve aquí y toca <strong>Activar notificaciones</strong>.</li>
+      </ol>
+      <p>Si la opción no aparece, comprueba <strong>Ajustes del teléfono → Apps → Chrome → Notificaciones</strong>. Luego vuelve a esta página y toca el botón.</p>
+    </div>
+    <div data-help="ios-install" hidden>
+      <h3>Agrega San Carlos a Inicio</h3>
+      <ol>
+        <li>Abre esta página en Safari y toca <strong>Compartir → Añadir a pantalla de inicio</strong>.</li>
+        <li>Si aparece <strong>Abrir como app web</strong>, déjalo activado.</li>
+        <li>Abre <strong>San Carlos</strong> desde el ícono de Inicio y toca <strong>Activar notificaciones</strong>.</li>
+      </ol>
+    </div>
+    <div data-help="ios" hidden>
+      <h3>Permite los avisos de San Carlos</h3>
+      <ol>
+        <li>En tu teléfono, abre <strong>Ajustes → Notificaciones → San Carlos</strong>.</li>
+        <li>Activa <strong>Permitir notificaciones</strong>.</li>
+        <li>Vuelve a San Carlos y toca <strong>Activar notificaciones</strong>.</li>
+      </ol>
+    </div>
+    <div data-help="browser" hidden>
+      <h3>Permite los avisos de este sitio</h3>
+      <ol>
+        <li>Toca el ícono a la izquierda de la dirección de la página.</li>
+        <li>En los permisos de este sitio, permite las notificaciones.</li>
+        <li>Vuelve aquí y toca <strong>Activar notificaciones</strong>.</li>
+      </ol>
+    </div>
+  </section>
+  <script src="/static/js/push.js?v=4" defer
+    onerror="document.getElementById('push-status').textContent='No se cargaron los controles de notificaciones. Recarga esta página.'"></script>
+</article>

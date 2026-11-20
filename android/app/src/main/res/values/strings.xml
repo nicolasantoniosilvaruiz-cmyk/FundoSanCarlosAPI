@@ -1,0 +1,12 @@
+<resources>
+    <string name="app_name">San Carlos</string>
+    <style name="Theme.SanCarlos" parent="android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:fontFamily">sans</item>
+        <item name="android:colorAccent">#267052</item>
+        <item name="android:windowBackground">#F4F6F2</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowActionModeOverlay">true</item>
+        <item name="android:statusBarColor">#173D32</item>
+        <item name="android:navigationBarColor">#173D32</item>
+    </style>
+</resources>

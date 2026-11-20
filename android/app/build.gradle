@@ -1,0 +1,52 @@
+import groovy.json.JsonSlurper
+
+plugins {
+    id 'com.android.application'
+}
+
+def packageName = 'cl.fundosancarlos.app'
+def local = new Properties()
+if (rootProject.file('local.properties').exists()) {
+    rootProject.file('local.properties').withInputStream { local.load(it) }
+}
+def serverUrl = (providers.gradleProperty('SAN_CARLOS_SERVER_URL').orNull
+    ?: local.getProperty('SAN_CARLOS_SERVER_URL', '')).trim().replaceAll('/+$', '')
+if (serverUrl && !(serverUrl ==~ /https:\/\/[A-Za-z0-9.-]+(?::[1-9][0-9]{0,4})?/)) {
+    throw new GradleException('SAN_CARLOS_SERVER_URL debe ser una URL HTTPS sin rutas.')
+}
+def configFile = file('google-services.json')
+def pushConfig = configFile.exists() ? new JsonSlurper().parse(configFile) : null
+def pushClient = pushConfig?.client?.find { it.client_info.android_client_info.package_name == packageName }
+if (pushConfig && !pushClient) {
+    throw new GradleException("google-services.json no contiene la app ${packageName}.")
+}
+android {
+    namespace = packageName
+    buildToolsVersion '36.0.0'
+    compileSdk {
+        version = release(36) { minorApiLevel = 1 }
+    }
+
+    defaultConfig {
+        applicationId = packageName
+        minSdk = 26
+        targetSdk = 35
+        versionCode = 2
+        versionName = '1.1'
+        buildConfigField 'String', 'SERVER_URL', '"' + serverUrl + '"'
+        resValue 'string', 'fcm_app_id', pushClient?.client_info?.mobilesdk_app_id ?: ''
+        resValue 'string', 'fcm_sender_id', pushConfig?.project_info?.project_number ?: ''
+        resValue 'string', 'fcm_project_id', pushConfig?.project_info?.project_id ?: ''
+        resValue 'string', 'fcm_api_key', pushClient?.api_key?.getAt(0)?.current_key ?: ''
+    }
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+    buildFeatures { buildConfig = true }
+}
+
+dependencies {
+    implementation 'com.google.firebase:firebase-messaging:25.0.1'
+}
