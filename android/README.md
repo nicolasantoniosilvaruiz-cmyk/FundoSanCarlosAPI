@@ -1,10 +1,12 @@
 # Fundo San Carlos para Android
 
-App nativa en Java, compatible con Android 8.0 o posterior. Comparte las cuentas y los datos de Django mediante la API. La base principal es `FundoSanCarlos/db.sqlite3`. El teléfono guarda la última respuesta en una SQLite propia para consulta sin conexión; las escrituras requieren que Django esté disponible.
+Para revisar esta copia del repositorio, siga **LEEME_PROFESOR.txt** en la raíz. Los lanzadores **INICIAR_WEB.bat** e **INICIAR_ANDROID_USB.bat** usan las carpetas incluidas en esta entrega.
+
+App nativa en Java, compatible con Android 8.0 o posterior. Comparte las cuentas y los datos de Django mediante la API. La base principal es `django/db.sqlite3`. El teléfono guarda la última respuesta en una SQLite propia para consulta sin conexión; las escrituras requieren que Django esté disponible.
 
 ## Instalar y conectar la versión 1.1
 
-Abre esta carpeta en Android Studio con el JDK integrado y el SDK Android 36.1. Selecciona tu teléfono y usa **Run ▶**. Para probar por USB sin recompilar, instala **SanCarlos-1.1-debug.apk**. El archivo anterior `SanCarlos-debug.apk` corresponde a la versión 1.0.
+Abre esta carpeta en Android Studio con el JDK integrado y el SDK Android 36.1. Selecciona tu teléfono y usa **Run ▶**.
 
 - **Prueba por USB.** Con depuración USB autorizada, cierra el servidor anterior si ocupa el puerto 8000 y ejecuta **iniciar_demo_usb.bat**. Abre San Carlos e inicia sesión. La app de depuración usa el túnel USB por defecto cuando no tiene una URL integrada.
 - **Presentación sin cable.** Una vez alojado Django, agrega `SAN_CARLOS_SERVER_URL=https://tu-servidor.example` a **local.properties** y recompila. El teléfono solo pide las credenciales de Django.
@@ -16,14 +18,14 @@ Para verificar los roles y el panel sin conexión, sigue el checklist de **GUIA_
 **El panel funciona sin Firebase.** Para recibir notificaciones necesitas configurar Firebase una vez. El APK sin esa configuración muestra el panel y las alertas del servidor, pero no recibe avisos en segundo plano.
 
 1. En la [consola de Firebase](https://console.firebase.google.com/), crea o abre un proyecto. Registra una app Android con el identificador exacto **`cl.fundosancarlos.app`**.
-2. Descarga **`google-services.json`** y déjalo en **`FundoSanCarlosAndroid/app/google-services.json`**. Android Studio debe recompilar e instalar nuevamente. El proyecto lee esa configuración al compilar. [Guía oficial para Android](https://firebase.google.com/docs/android/setup).
+2. Descarga **`google-services.json`** y déjalo en **`android/app/google-services.json`**. Android Studio debe recompilar e instalar nuevamente. El proyecto lee esa configuración al compilar. [Guía oficial para Android](https://firebase.google.com/docs/android/setup).
 3. Para Django, configura una credencial de una cuenta de servicio del mismo proyecto con acceso a Firebase Cloud Messaging HTTP v1. El **JSON privado de la cuenta de servicio es otro archivo**. Guárdalo fuera del repositorio y de la carpeta de Android. No lo envíes por chat ni lo incluyas en el APK. [Autorización de FCM HTTP v1](https://firebase.google.com/docs/cloud-messaging/auth-server).
 4. En el PowerShell de **FundoSanCarlos**, detén Django con Ctrl+C y configura estas variables en **esa misma ventana**, con tu ID y la ruta real:
 
 ```powershell
 $env:FIREBASE_PROJECT_ID = "ID-REAL-DE-TU-PROYECTO"
 $env:GOOGLE_APPLICATION_CREDENTIALS = "C:\ruta\privada\cuenta-de-servicio.json"
-& "C:/Users/Merce/Documents/Codex/FundoSanCarlosAndroid/iniciar_demo_usb.bat"
+& "..\INICIAR_ANDROID_USB.bat"
 ```
 
 5. Abre **San Carlos** en un Android con servicios de Google Play e internet. En Android 13 o posterior, permite los avisos cuando el sistema lo pida al abrir la app por primera vez. Entra como administrador y verifica el estado en **Alertas**. Si Android ya bloqueó el aviso, el botón puede abrir directamente **los ajustes de notificaciones de San Carlos**. Al volver con el permiso activo, la app vincula el teléfono.

@@ -1,0 +1,69 @@
+FUNDO SAN CARLOS - REVISION DEL PROYECTO
+
+Las carpetas django, android y arduino contienen proyectos separados.
+La base incluida en django/db.sqlite3 contiene datos de ejemplo para la revision.
+No se necesita conectar un Arduino para recorrer la web o la aplicacion Android.
+
+WEB EN WINDOWS
+1. Descomprima o clone el repositorio completo en una carpeta local.
+   Para Android Studio, use una ruta sin tildes ni enie, por ejemplo
+   C:\Proyectos\FundoSanCarlos.
+2. Debe tener Python instalado. Se recomienda Python 3.12 o posterior.
+3. Ejecute INICIAR_WEB.bat en la raiz. La primera vez crea el entorno virtual e
+   instala las dependencias, por lo que necesita internet.
+4. Cuando aparezca Starting development server, abra http://127.0.0.1:8000/
+   y deje abierta la ventana del lanzador.
+
+Cuentas de la base de revision
+Administrador: admin
+Contrasena: FundoDemo2026!
+Trabajador: trabajador
+Contrasena: CampoDemo2026!
+
+Puede revisar empleados, cambiar contrasenas, registrar retiros y recargas de
+petroleo y configurar la capacidad visual del agua desde Registro de lecturas.
+El agua conserva lecturas de ejemplo; el boton Guardar lectura permite ingresar
+otros porcentajes como administrador sin disponer del prototipo.
+Los datos que guarde se conservan en la misma base al reiniciar el programa.
+Sin un dispositivo conectado, el agua puede indicar Datos desactualizados.
+Registre un porcentaje manual para actualizarla durante la revision.
+
+ANDROID STUDIO
+1. Abra la carpeta android completa, la que contiene settings.gradle.
+2. Use el JDK integrado de Android Studio e instale, cuando se soliciten,
+   Android SDK 36.1 y Build-Tools 36.0.0. Permita sincronizar Gradle por internet.
+3. Conecte un telefono Android 8.0 o posterior con depuracion USB autorizada,
+   seleccionelo y pulse Run para compilar e instalar la app.
+4. Inicie Django con INICIAR_WEB.bat. Conecte PC y telefono al mismo Wi-Fi.
+5. En la pantalla de ingreso de San Carlos, abra Opciones de conexion y escriba
+   la direccion que imprime el lanzador como Telefono u otro PC en el mismo Wi-Fi.
+   Ejemplo: http://192.168.1.20:8000
+   Use la direccion del PC donde inicio Django, sin /agua/ ni /api/.
+6. Entre con una de las cuentas anteriores. Web y Android usan la misma base.
+
+POR QUE LA APP PIDE LA IP
+Django se ejecuta en su PC. La app necesita la direccion de ese PC para
+consultar sus datos. El lanzador muestra automaticamente la IPv4 del Wi-Fi
+actual. Esa direccion puede cambiar al cambiar de red.
+En el telefono, 127.0.0.1 apunta al propio telefono. Para acceder por Wi-Fi,
+use la IPv4 del PC que muestra INICIAR_WEB.bat. Tambien puede verla ejecutando
+ipconfig en el PC, en Direccion IPv4 del adaptador Wi-Fi.
+
+Si Chrome en el telefono no abre http://IP-DEL-PC:8000/agua/, compruebe que
+ambos equipos esten en el mismo Wi-Fi y que el firewall permita Python en la
+red utilizada. Una red institucional puede aislar los dispositivos.
+
+ALTERNATIVA POR USB
+Cierre el Django anterior con Ctrl+C y ejecute INICIAR_ANDROID_USB.bat.
+Mantenga el telefono conectado por cable y con depuracion USB autorizada.
+La app de depuracion usa http://127.0.0.1:8000 de forma predeterminada.
+Si habia configurado otra direccion, use Cuenta > Volver a configurar conexion.
+El lanzador necesita Platform-Tools del SDK y un solo telefono USB conectado.
+
+NOTIFICACIONES
+El panel y las alertas registradas pueden revisarse sin Firebase.
+La copia del repositorio excluye las credenciales privadas de envio y la
+configuracion particular de Firebase. Para recibir notificaciones en pantalla
+bloqueada, debe configurar su propio proyecto Firebase en Android y Django,
+o revisar esta funcion en el equipo del estudiante donde esta configurada.
+El permiso de notificaciones por si solo no habilita el envio.

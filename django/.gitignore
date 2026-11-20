@@ -10,3 +10,6 @@ staticfiles/
 *.log
 
 .push-vapid.pem
+
+# Base de revision con datos de ejemplo.
+!/db.sqlite3

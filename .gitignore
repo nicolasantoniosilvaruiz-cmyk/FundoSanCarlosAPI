@@ -19,3 +19,6 @@
 **/*.apk
 **/*.idsig
 **/*.log
+
+# Base de ejemplo incluida para revision academica.
+!/django/db.sqlite3
